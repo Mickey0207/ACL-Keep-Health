@@ -1,12 +1,14 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Card, Typography, Button, Space, Flex, Layout, Form, Input, Divider, Alert, message } from 'antd'
+import { Card, Typography, Button, Space, Flex, Layout, Form, Input, Divider, Alert, message, Row, Col } from 'antd'
 import { ArrowLeftOutlined, UnorderedListOutlined, UserOutlined } from '@ant-design/icons'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function AccountPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [form] = Form.useForm()
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState<boolean>(false)
 
   useEffect(() => {
     // 檢查 URL 是否有 line_linked=true 參數
@@ -16,7 +18,71 @@ export default function AccountPage() {
       // 移除 URL 參數，避免重新整理時再次顯示訊息
       navigate('/account', { replace: true })
     }
+    // 載入使用者資料
+    loadProfile()
   }, [navigate, location])
+
+  const getToken = () => localStorage.getItem('accessToken')
+
+  const loadProfile = async () => {
+    const token = getToken()
+    if (!token) {
+      navigate('/login')
+      return
+    }
+    try {
+      setLoading(true)
+      
+      // 先嘗試取得個人資料
+      const res = await fetch('https://server.mickeylin0207.workers.dev/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        throw new Error('Failed to load profile')
+      }
+      const data = await res.json()
+      
+      // 如果 username 是 null，先初始化 profile
+      if (!data.username && !data.line_user_id) {
+        console.log('Profile incomplete, initializing...')
+        const initRes = await fetch('https://server.mickeylin0207.workers.dev/api/auth/init-profile', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (initRes.ok) {
+          const initData = await initRes.json()
+          console.log('Profile initialized:', initData)
+          // 重新載入 profile
+          const reloadRes = await fetch('https://server.mickeylin0207.workers.dev/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (reloadRes.ok) {
+            const reloadedData = await reloadRes.json()
+            setProfile(reloadedData)
+            const displayName = reloadedData.line_display_name || reloadedData.username || ''
+            form.setFieldsValue({
+              username: displayName,
+              email: reloadedData.email || '',
+            })
+            return
+          }
+        }
+      }
+      
+      setProfile(data)
+      // 顯示名稱優先順序：LINE 顯示名稱 > users.username
+      const displayName = data.line_display_name || data.username || ''
+      form.setFieldsValue({
+        username: displayName,
+        email: data.email || '',
+      })
+    } catch (e) {
+      message.error('無法載入帳戶資料，請重新登入')
+      navigate('/login')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleBindLine = async () => {
     const token = localStorage.getItem('accessToken')
@@ -62,6 +128,37 @@ export default function AccountPage() {
     navigate('/login')
   }
 
+  const handleSendResetEmail = async () => {
+    const token = getToken()
+    if (!token) return navigate('/login')
+    try {
+      const res = await fetch('https://server.mickeylin0207.workers.dev/api/auth/reset-password', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('fail')
+      message.success('已寄送重設密碼信到您的信箱')
+    } catch {
+      message.error('寄送重設密碼信失敗，請稍後再試')
+    }
+  }
+
+  const handleUnlinkLine = async () => {
+    const token = getToken()
+    if (!token) return navigate('/login')
+    try {
+      const res = await fetch('https://server.mickeylin0207.workers.dev/api/auth/line/unlink', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('fail')
+      message.success('已取消 LINE 綁定')
+      await loadProfile()
+    } catch {
+      message.error('取消綁定失敗，請稍後再試')
+    }
+  }
+
   return (
     <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <Layout.Header
@@ -95,10 +192,10 @@ export default function AccountPage() {
             {/* 基本資訊 */}
             <Typography.Title level={5}>基本資訊</Typography.Title>
             <Form layout="vertical" form={form} size="large">
-              <Form.Item label="使用者名稱" name="username" initialValue="demo user">
+              <Form.Item label="使用者名稱" name="username">
                 <Input placeholder="請輸入使用者名稱" />
               </Form.Item>
-              <Form.Item label="電子郵件" name="email" initialValue="demo@example.com">
+              <Form.Item label="電子郵件" name="email">
                 <Input placeholder="請輸入電子郵件" type="email" disabled />
               </Form.Item>
             </Form>
@@ -112,21 +209,14 @@ export default function AccountPage() {
 
             {/* 密碼管理 */}
             <Typography.Title level={5}>變更密碼</Typography.Title>
-            <Form layout="vertical" size="large">
-              <Form.Item label="目前密碼" name="currentPassword">
-                <Input placeholder="請輸入目前密碼" type="password" />
-              </Form.Item>
-              <Form.Item label="新密碼" name="newPassword">
-                <Input placeholder="請輸入新密碼" type="password" />
-              </Form.Item>
-              <Form.Item label="確認新密碼" name="confirmPassword">
-                <Input placeholder="請再次輸入新密碼" type="password" />
-              </Form.Item>
-            </Form>
-
+            <Alert
+              message="系統將寄送重設密碼連結至您的電子郵件。"
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
             <Space style={{ marginBottom: 16 }}>
-              <Button type="primary">更新密碼</Button>
-              <Button>取消</Button>
+              <Button type="primary" onClick={handleSendResetEmail}>寄送重設密碼信</Button>
             </Space>
 
             <Divider />
@@ -139,13 +229,39 @@ export default function AccountPage() {
               showIcon
               style={{ marginBottom: 16 }}
             />
-            <Button
-              type="primary"
-              style={{ background: '#00B900', borderColor: '#00B900' }}
-              onClick={handleBindLine}
-            >
-              綁定 LINE 帳號
-            </Button>
+            {profile?.line_user_id ? (
+              <Row gutter={12} align="middle">
+                <Col flex="0 0 auto">
+                  <Button danger onClick={handleUnlinkLine}>取消綁定</Button>
+                </Col>
+                <Col flex="auto">
+                  <Row gutter={8}>
+                    <Col span={12}>
+                      <Form layout="vertical">
+                        <Form.Item label="LINE 名稱">
+                          <Input value={profile?.line_display_name || ''} readOnly />
+                        </Form.Item>
+                      </Form>
+                    </Col>
+                    <Col span={12}>
+                      <Form layout="vertical">
+                        <Form.Item label="LINE UUID">
+                          <Input value={profile?.line_user_id || ''} readOnly />
+                        </Form.Item>
+                      </Form>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ) : (
+              <Button
+                type="primary"
+                style={{ background: '#00B900', borderColor: '#00B900' }}
+                onClick={handleBindLine}
+              >
+                綁定 LINE 帳號
+              </Button>
+            )}
 
             <Divider />
 

@@ -18,6 +18,7 @@ type AppContext = {
   Bindings: Bindings;
   Variables: {
     user: User;
+    supabaseToken: string;
   };
 };
 
@@ -74,6 +75,7 @@ const verifySupabaseJWT = async (c: any, next: () => Promise<void>) => {
   
   // 將使用者資訊存入 context
   c.set('user', user);
+  c.set('supabaseToken', token);
   await next();
 };
 
@@ -235,6 +237,122 @@ authRoutes.get('/line/callback', async (c) => {
   // 6. 成功後導向回前端的帳戶頁面
   const frontendBase = c.env.FRONTEND_BASE_URL ?? 'https://acl-keep-health.pages.dev';
   return c.redirect(`${frontendBase}/account?line_linked=true`);
+});
+
+// 3. 取得目前使用者資料（合併 auth 與 public.users）
+authRoutes.get('/me', verifySupabaseJWT, async (c) => {
+  const user = c.get('user');
+  const token = c.get('supabaseToken');
+  
+  // 使用 anon key + 使用者 JWT 以通過 RLS（auth.uid() = id）
+  let supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  let { data, error } = await supabase
+    .from('users')
+    .select('id, username, email, line_user_id, line_display_name')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // 若無資料（可能被 RLS 過濾或尚未建立），且有 service role，則用 service role 重查一次
+  if ((!data || error) && c.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (error) console.log('RLS/anon query error, retrying with service role', error);
+    supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_ROLE_KEY);
+    const result = await supabase
+      .from('users')
+      .select('id, username, email, line_user_id, line_display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    data = result.data;
+    error = result.error;
+  }
+
+  if (error) {
+    console.error('Failed to load user profile:', error);
+    return c.json({ error: 'Failed to load profile', details: error }, 500);
+  }
+
+  return c.json({
+    id: user.id,
+    email: data?.email ?? user.email,
+    username: data?.username ?? user.user_metadata?.full_name ?? null,
+    line_user_id: data?.line_user_id ?? null,
+    line_display_name: data?.line_display_name ?? null,
+  });
+});
+
+// 4. 寄送重設密碼信
+authRoutes.post('/reset-password', verifySupabaseJWT, async (c) => {
+  const user = c.get('user');
+  const frontendBase = c.env.FRONTEND_BASE_URL ?? 'https://acl-keep-health.pages.dev';
+
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY);
+  const { data, error } = await supabase.auth.resetPasswordForEmail(user.email!, {
+    redirectTo: `${frontendBase}/account`,
+  });
+
+  if (error) {
+    return c.json({ error: 'Failed to send reset email', details: error }, 500);
+  }
+  return c.json({ success: true });
+});
+
+// 5. 取消綁定 LINE
+authRoutes.post('/line/unlink', verifySupabaseJWT, async (c) => {
+  const user = c.get('user');
+
+  const key = c.env.SUPABASE_SERVICE_ROLE_KEY ?? c.env.SUPABASE_ANON_KEY;
+  const supabase = createClient(c.env.SUPABASE_URL, key!);
+
+  const { error } = await supabase
+    .from('users')
+    .update({ line_user_id: null, line_display_name: null })
+    .eq('id', user.id);
+
+  if (error) {
+    return c.json({ error: 'Failed to unlink LINE', details: error }, 500);
+  }
+  return c.json({ success: true });
+});
+
+// 6. Debug: 檢查並初始化使用者在 public.users 的資料列
+authRoutes.post('/init-profile', verifySupabaseJWT, async (c) => {
+  const user = c.get('user');
+  
+  if (!c.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return c.json({ error: 'Service role key not configured' }, 500);
+  }
+
+  const supabaseAdmin = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  // 檢查是否已有資料列
+  const { data: existing } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    return c.json({ message: 'Profile already exists', data: existing });
+  }
+
+  // 建立新資料列
+  const username = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+  const { data: inserted, error } = await supabaseAdmin
+    .from('users')
+    .insert({
+      id: user.id,
+      email: user.email,
+      username: username,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ error: 'Failed to create profile', details: error }, 500);
+  }
+
+  return c.json({ message: 'Profile created successfully', data: inserted });
 });
 
 
