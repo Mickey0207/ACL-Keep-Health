@@ -1,10 +1,66 @@
-import { useNavigate } from 'react-router-dom'
-import { Card, Typography, Button, Space, Flex, Layout, Form, Input, Divider, Alert } from 'antd'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Card, Typography, Button, Space, Flex, Layout, Form, Input, Divider, Alert, message } from 'antd'
 import { ArrowLeftOutlined, UnorderedListOutlined, UserOutlined } from '@ant-design/icons'
+import { useEffect } from 'react'
 
 export default function AccountPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [form] = Form.useForm()
+
+  useEffect(() => {
+    // 檢查 URL 是否有 line_linked=true 參數
+    const params = new URLSearchParams(location.search)
+    if (params.get('line_linked') === 'true') {
+      message.success('LINE 帳號綁定成功！')
+      // 移除 URL 參數，避免重新整理時再次顯示訊息
+      navigate('/account', { replace: true })
+    }
+  }, [navigate, location])
+
+  const handleBindLine = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      message.error('請先登入後再進行操作')
+      navigate('/login')
+      return
+    }
+
+    try {
+      const response = await fetch('https://server.mickeylin0207.workers.dev/api/auth/line/redirect', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.redirectUrl) {
+          // 導向到 LINE 授權頁面
+          window.location.href = data.redirectUrl;
+        } else {
+          message.error('無法取得 LINE 授權網址，請稍後再試。');
+        }
+      } else {
+        const errorData = await response.json();
+        message.error(`驗證失敗：${errorData.error || '請重新登入'}`);
+        if (response.status === 401) {
+          handleLogout(); // 如果是授權問題，直接登出
+        }
+      }
+    } catch (error) {
+      message.error('綁定過程中發生網路錯誤，請檢查您的連線。');
+      console.error('Error during LINE bind redirect:', error);
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('username')
+    message.success('您已成功登出')
+    navigate('/login')
+  }
 
   return (
     <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -75,33 +131,26 @@ export default function AccountPage() {
 
             <Divider />
 
-            {/* LINE 帳號綁定 */}
-            <Typography.Title level={5}>LINE 帳號綁定</Typography.Title>
+            {/* LINE 綁定 */}
+            <Typography.Title level={5}>LINE 綁定</Typography.Title>
             <Alert
-              message="綁定 LINE 帳號後，您可以透過 LINE 快速登入"
+              message="將您的帳戶與 LINE 連接，以便接收通知或快速登入。"
               type="info"
+              showIcon
               style={{ marginBottom: 16 }}
             />
             <Button
-              onClick={() => {
-                alert('將開啟 LINE 授權頁面 (後端 API)')
-              }}
-              style={{ marginBottom: 16 }}
+              type="primary"
+              style={{ background: '#00B900', borderColor: '#00B900' }}
+              onClick={handleBindLine}
             >
               綁定 LINE 帳號
             </Button>
 
             <Divider />
 
-            {/* 登出 */}
-            <Typography.Title level={5}>登出</Typography.Title>
-            <Button
-              danger
-              onClick={() => {
-                navigate('/login')
-              }}
-            >
-              登出帳戶
+            <Button type="primary" danger block onClick={handleLogout}>
+              登出
             </Button>
           </Card>
         </div>
