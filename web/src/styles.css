@@ -114,3 +114,27 @@ a:hover {
     padding: 0 12px;
   }
 }
+
+/* StartForm upload preview enlargement (scoped) */
+.start-upload .ant-upload-wrapper { width: 100%; }
+.start-upload .ant-upload-list.ant-upload-list-picture-card { gap: 12px; width: 100%; display: block; }
+/* 讓每個預覽項目的外層容器與項目高度自動，避免 104px 的內建高度限制 */
+.start-upload .ant-upload-list-picture-card .ant-upload-list-item-container,
+.start-upload .ant-upload-list-picture-card .ant-upload-list-item,
+.start-upload .ant-upload-list-picture-card .ant-upload-list-item-info {
+  width: 100% !important;
+  height: auto !important;
+}
+/* 縮圖區塊與圖片都以原始比例自動撐高，圖片填滿寬度 */
+.start-upload .ant-upload-list-picture-card .ant-upload-list-item-thumbnail {
+  width: 100% !important;
+  height: auto !important;
+}
+.start-upload .ant-upload-list-picture-card .ant-upload-list-item-thumbnail img {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain; /* 盡可能完整顯示照片內容 */
+  border-radius: 8px;
+}
+.start-upload .ant-upload.ant-upload-select-picture-card { width: 100% !important; }

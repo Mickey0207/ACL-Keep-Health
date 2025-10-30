@@ -39,8 +39,8 @@ export default function AccountPage() {
             {/* 基本資訊 */}
             <Typography.Title level={5}>基本資訊</Typography.Title>
             <Form layout="vertical" form={form} size="large">
-              <Form.Item label="姓名" name="name" initialValue="demo user">
-                <Input placeholder="請輸入姓名" />
+              <Form.Item label="使用者名稱" name="username" initialValue="demo user">
+                <Input placeholder="請輸入使用者名稱" />
               </Form.Item>
               <Form.Item label="電子郵件" name="email" initialValue="demo@example.com">
                 <Input placeholder="請輸入電子郵件" type="email" disabled />

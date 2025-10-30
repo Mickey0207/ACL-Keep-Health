@@ -1,8 +1,23 @@
-import { Form, Input, DatePicker, Upload, Button, Card, Space, Typography } from 'antd'
+import { Form, Input, DatePicker, Upload, Button, Card, Space, Typography, Select } from 'antd'
 import dayjs from 'dayjs'
+import { useState, useEffect } from 'react'
 
 export default function StartForm() {
   const [form] = Form.useForm()
+  const [currentUser, setCurrentUser] = useState<string>('王小明') // 模擬當前登入者
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]) // 監聽上傳的照片
+
+  useEffect(() => {
+    // TODO: 從登入狀態或 API 取得真實使用者名稱
+    const loggedInUser = localStorage.getItem('username') || '王小明'
+    setCurrentUser(loggedInUser)
+    // 自動帶入使用者名稱到保養人員欄位
+    form.setFieldValue('staff', loggedInUser)
+  }, [form])
+
+  const handleUploadChange = ({ fileList }: any) => {
+    setUploadedFiles(fileList)
+  }
 
   const onFinish = (values: any) => {
     console.log('submit maintenance:', values)
@@ -10,6 +25,8 @@ export default function StartForm() {
 
   const onReset = () => {
     form.resetFields()
+    // 重置後重新帶入使用者名稱
+    form.setFieldValue('staff', currentUser)
   }
 
   return (
@@ -37,6 +54,14 @@ export default function StartForm() {
           rules={[{ required: true, message: '請輸入樓層' }]}
         >
           <Input placeholder="例如：B1 / 2F" size="large" />
+        </Form.Item>
+
+        <Form.Item
+          label="保養位置"
+          name="location"
+          rules={[{ required: true, message: '請輸入保養位置' }]}
+        >
+          <Input placeholder="例如：大廳 / 辦公室" size="large" />
         </Form.Item>
 
         <Form.Item
@@ -85,20 +110,35 @@ export default function StartForm() {
           <Input placeholder="例如：王小明" size="large" />
         </Form.Item>
 
-        <Form.Item label="上傳照片" name="photos">
-          <Upload
-            beforeUpload={() => false}
-            listType="picture-card"
-            multiple
-            maxCount={10}
-          >
-            <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <div style={{ fontSize: 12, color: '#666' }}>選擇照片</div>
-            </div>
-          </Upload>
+        <Form.Item label="上傳照片" name="photos" style={{ width: '100%' }}>
+          <div className="start-upload" style={{ width: '100%' }}>
+            <Upload
+              beforeUpload={() => false}
+              listType="picture-card"
+              multiple={false}
+              maxCount={1}
+              onChange={handleUploadChange}
+              style={{ width: '100%' }}
+            >
+              {uploadedFiles.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ fontSize: 14, color: '#666', fontWeight: 500 }}>+ 選擇照片</div>
+                </div>
+              )}
+            </Upload>
+          </div>
         </Form.Item>
 
         <Space style={{ marginTop: 24 }}>
+          <Select
+            style={{ width: 150 }}
+            placeholder="上傳照片張數"
+            value={uploadedFiles.length > 0 ? uploadedFiles.length.toString() : undefined}
+            options={[
+              { label: `已上傳 ${uploadedFiles.length} 張`, value: uploadedFiles.length.toString(), disabled: true }
+            ]}
+            size="large"
+          />
           <Button
             type="primary"
             htmlType="submit"

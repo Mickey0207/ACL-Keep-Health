@@ -1,4 +1,4 @@
-import { Form, Input, DatePicker, Upload, Button, Card, Space, Typography } from 'antd'
+import { Form, Input, DatePicker, Button, Card, Space } from 'antd'
 import dayjs from 'dayjs'
 
 export default function CreateItem() {
@@ -19,6 +19,10 @@ export default function CreateItem() {
       <Form layout="vertical" form={form} onFinish={onFinish} size="large">
         <Form.Item label="樓層" name="floor" rules={[{ required: true, message: '請輸入樓層' }]}>
           <Input placeholder="例如：B1 / 2F" />
+        </Form.Item>
+
+        <Form.Item label="保養位置" name="location" rules={[{ required: true, message: '請輸入保養位置' }]}>
+          <Input placeholder="例如：大廳 / 辦公室" />
         </Form.Item>
 
         <Form.Item label="維運系統" name="system" rules={[{ required: true, message: '請選擇維運系統' }]}>
@@ -43,25 +47,12 @@ export default function CreateItem() {
           />
         </Form.Item>
 
-        <Form.Item label="保養日期" name="date" initialValue={dayjs()} rules={[{ required: true, message: '請選擇保養日期' }]}>
+        <Form.Item label="新增日期" name="date" initialValue={dayjs()} rules={[{ required: true, message: '請選擇新增日期' }]}>
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
 
-        <Form.Item label="保養人員" name="staff" rules={[{ required: true, message: '請輸入保養人員' }]}>
+        <Form.Item label="新增人員" name="staff" rules={[{ required: true, message: '請輸入新增人員' }]}>
           <Input placeholder="例如：王小明" />
-        </Form.Item>
-
-        <Form.Item label="上傳照片 (optional)" name="photos">
-          <Upload
-            multiple
-            maxCount={10}
-            listType="picture-card"
-            beforeUpload={() => false}
-          >
-            <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-              + 選擇照片
-            </div>
-          </Upload>
         </Form.Item>
 
         <Space>
