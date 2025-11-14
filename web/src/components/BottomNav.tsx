@@ -12,8 +12,7 @@ const BottomNav: React.FC<RootNavProps> = ({ mode, activeKey, onChange, siteId }
   const items =
     mode === 'root'
       ? [
-          { key: 'sites', label: '案場列表' },
-          { key: 'user', label: '用戶管理' }
+          { key: 'sites', label: '案場列表' }
         ]
       : [
           { key: 'list', label: '案場列表' },
