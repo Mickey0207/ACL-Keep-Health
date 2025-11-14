@@ -6,7 +6,7 @@ applyTo: '**'
 3. 所有前端純頁面文件都放在 web\src 目錄下
 4. 所有後端純頁面文件都放在 Server\src 目錄下
 5. 前端只能跟後端勾通,只有後端能購跟資料庫等第三方服務溝通
-6. 如有新增或刪除Supabase的table或storage,請務必更新 doc\Database.md 文件
+6. 如有新增或刪除資料庫的table或storage,請務必更新 doc\Database.md 文件
 7. 如有新增或刪除API,請務必更新 doc\API.md 文件,並且說明API的用途
 8. 執行任何資料庫遷移前,請先確認 doc\Database.md 文件已更新
 9. 執行任何API變更前,請先確認 doc\API.md 文件已更新

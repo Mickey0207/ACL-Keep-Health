@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Card, Typography, Layout } from 'antd'
-import { UnorderedListOutlined, UserOutlined } from '@ant-design/icons'
+import { UnorderedListOutlined } from '@ant-design/icons'
 
 const demoSites = [
   { id: 's1', name: '中山大樓', address: '台北市中山區 xxx 路 1 號' },
@@ -81,7 +81,7 @@ export default function SitesPage() {
           padding: '0',
           boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.06)',
           display: 'flex',
-          justifyContent: 'space-around',
+          justifyContent: 'center',
           alignItems: 'stretch'
         }}
       >
@@ -103,31 +103,6 @@ export default function SitesPage() {
           <UnorderedListOutlined style={{ fontSize: 20, marginBottom: 4 }} />
           <span style={{ fontSize: 11 }}>案場列表</span>
         </div>
-
-        <button
-          onClick={() => navigate('/account')}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '12px',
-            textDecoration: 'none',
-            color: '#999999',
-            borderBottom: 'none',
-            transition: 'all 0.3s ease',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 'inherit',
-            fontFamily: 'inherit'
-          }}
-          title="帳戶設定"
-        >
-          <UserOutlined style={{ fontSize: 20, marginBottom: 4 }} />
-          <span style={{ fontSize: 11 }}>帳戶設定</span>
-        </button>
       </Layout.Footer>
     </Layout>
   )
